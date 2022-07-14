@@ -21,7 +21,7 @@ M. R. H. Maia, A. Plastino, A. A. Freitas and J. P. Magalhães, "Interpretable c
 
 # Datasets
 ## Ageing-related genes
-There are four datasets in this domain, corresponding to the [GenAge](https://genomics.senescence.info/genes/models.html) model organisms:
+There are four datasets in this domain, corresponding to the [GenAge model organisms](https://genomics.senescence.info/genes/models.html):
 - *C. elegans* ([`data/AG-Worm.csv`](data/AG-Worm.csv))
 - *D. melanogaster* ([`data/AG-Fly.csv`](data/AG-Fly.csv))
 - *M. musculus* ([`data/AG-Mouse.csv`](data/AG-Mouse.csv))
