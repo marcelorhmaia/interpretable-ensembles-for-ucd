@@ -64,8 +64,8 @@ scipy~=1.6.0
 ```
 
 ### External libraries
-The [GNU Scientific Library (GSL)](https://www.gnu.org/software/gsl/) is required.  
-The required GSL headers and binaries for Windows x64 are available from this repository.
+The [GNU Scientific Library (GSL)](https://www.gnu.org/software/gsl/) is required. The code has been tested with GSL 2.6.
+The required GSL 2.6 headers and binaries for Windows x64 are available from this repository.
 
 ### Compiler
 A C compiler is required to build Python extension modules (see the [Cython documentation](https://cython.readthedocs.io/en/stable/src/quickstart/install.html)).  
@@ -79,7 +79,7 @@ git clone https://github.com/marcelorhmaia/interpretable-ensembles-for-uncertain
 ```
 
 Build the extension modules (only required if not on Python 3.9/Windows x64):
-1. If not on Windows x64, replace the GSL paths on lines 7 and 11 of file [`code/setup.py`](code/setup.py) with the corresponding paths on your system.
+1. If on Windows x64, unzip the [`external_lib/gsl_x64-windows.zip`](external_lib/gsl_x64-windows.zip) file. Otherwise, replace the GSL paths on lines 7 and 11 of file [`code/setup.py`](code/setup.py) with the corresponding paths on your system.
 2. `cd code`
 3. `python setup.py build_ext --inplace`
 
