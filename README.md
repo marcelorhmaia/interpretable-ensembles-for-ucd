@@ -75,7 +75,7 @@ The compiled extension modules compatible with Python 3.9 and Windows x64 are av
 
 Clone the project from GitHub:
 ```
-git clone https://github.com/marcelorhmaia/interpretable-ensembles-for-uncertain-data
+git clone https://github.com/marcelorhmaia/interpretable-ensembles-for-ucd
 ```
 
 Build the extension modules (only required if not on Python 3.9/Windows x64):
