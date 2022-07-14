@@ -79,7 +79,7 @@ git clone https://github.com/marcelorhmaia/interpretable-ensembles-for-uncertain
 ```
 
 Build the extension modules (only required if not on Python 3.9/Windows x64):
-1. If on Windows x64, unzip the [`external_lib/gsl_x64-windows.zip`](external_lib/gsl_x64-windows.zip) file. Otherwise, replace the GSL paths on lines 7 and 11 of file [`code/setup.py`](code/setup.py) with the corresponding paths on your system.
+1. If on Windows x64, unzip the [`external_lib/gsl_x64-windows.zip`](external_lib/gsl_x64-windows.zip) file. Otherwise, replace the GSL paths on lines 11 and 15 of file [`code/setup.py`](code/setup.py) with the corresponding paths on your system.
 2. `cd code`
 3. `python setup.py build_ext --inplace`
 
