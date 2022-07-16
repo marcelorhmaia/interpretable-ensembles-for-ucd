@@ -184,4 +184,4 @@ Expected running time on a typical computer:
 
 # License
 
-This project is covered under the terms of the [GNU General Public License (GPL) version 3](https://www.gnu.org/licenses/gpl-3.0.html).
+This project is covered under the terms of the [GNU General Public License (GPL) version 3](LICENSE).
