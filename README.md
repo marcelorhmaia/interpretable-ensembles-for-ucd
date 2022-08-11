@@ -14,13 +14,13 @@
   - [Reproduction](#reproduction)
 - [License](#license)
 
-# Overview
+## Overview
 This repository contains the datasets and code related to the work reported in the paper referenced below.
 
 M. R. H. Maia, A. Plastino, A. A. Freitas and J. P. Magalhães, "Interpretable Ensembles of Classifiers for Uncertain Data with Bioinformatics Applications", under review in *IEEE/ACM Transactions on Computational Biology and Bioinformatics*, 2022.
 
-# Datasets
-## Ageing-related genes
+## Datasets
+### Ageing-related genes
 There are four datasets in this domain, corresponding to the [GenAge model organisms](https://genomics.senescence.info/genes/models.html):
 - *C. elegans* ([`data/AG-Worm.csv`](data/AG-Worm.csv))
 - *D. melanogaster* ([`data/AG-Fly.csv`](data/AG-Fly.csv))
@@ -36,7 +36,7 @@ They contain the following columns:
 - A variable number of feature columns (one for each protein) named with the corresponding STRING database IDs. Their values are the probabilities of the corresponding interactions (scaled in the interval [0, 1], where zeros represent missing values).
 - `class` (gene's class: 0 = "anti-longevity", 1 = "pro-longevity").
 
-## Drug side effects
+### Drug side effects
 The six datasets from this domain used in the reference paper are all encoded in a single file ([`data/SE.csv`](data/SE.csv)) as they all share the same features.
 
 The file contains the following columns:
@@ -45,12 +45,12 @@ The file contains the following columns:
 - 1750 class columns (one for each side effect) named `se_<UMLS concept ID>` (0 = "no", 1 = "yes"). Note that not only the six side effects used in the paper are included in the file but all side effects from the [SIDER database](http://sideeffects.embl.de/).
 
 
-# System requirements
-## Operating systems
+## System requirements
+### Operating systems
 This software is compatible with Windows and Linux. It has been tested on Windows 10 x64.
 
-## Software dependencies
-### Python environment
+### Software dependencies
+#### Python environment
 Python 3 is required. The code has been tested on Python 3.9.  
 The following Python packages are required (as listed in [`requirements.txt`](requirements.txt)):
 ```
@@ -63,15 +63,15 @@ joblib~=1.0.0
 scipy~=1.6.0
 ```
 
-### External libraries
+#### External libraries
 The [GNU Scientific Library (GSL)](https://www.gnu.org/software/gsl/) is required. The code has been tested with GSL 2.6.
 The required GSL 2.6 headers and binaries for Windows x64 are available from this repository.
 
-### Compiler
+#### Compiler
 A C compiler is required to build Python extension modules (see the [Cython documentation](https://cython.readthedocs.io/en/stable/src/quickstart/install.html)).  
 The compiled extension modules compatible with Python 3.9 and Windows x64 are available from this repository.
 
-# Installation guide:
+## Installation guide:
 
 Clone the project from GitHub:
 ```
@@ -83,11 +83,11 @@ Build the extension modules (only required if not on Python 3.9/Windows x64):
 2. `cd code`
 3. `python setup.py build_ext --inplace`
 
-# Instructions for use:
+## Instructions for use:
 
-## Predictive performance tests
+### Predictive performance tests
 
-### Usage
+#### Usage
 ```
 cd code
 python eval.py <model> <dataset>
@@ -97,7 +97,7 @@ Replace `<model>` with one of the following: {`ENB-NV`, `ENB-NV+BB`, `ENB-NV+BRS
 
 Replace `<dataset>` with one of the following: {`AG-Worm`, `AG-Fly`, `AG-Mouse`, `AG-Yeast`, `SE-Nausea`, `SE-Headache`, `SE-Dermatitis`, `SE-Rash`, `SE-Vomiting`, `SE-Dizziness`}
 
-### Example
+#### Example
 ```
 cd code
 python eval.py ENB-NV AG-Worm
@@ -121,9 +121,9 @@ dataset = AG-Worm | model = ENB-NV
 mean        0.929757     0.355409       0.514243          50.6        0.426276     0.944712       0.587472          25.7  0.554443    0.650060  0.714625  0.579447
 ```
 
-## Model interpretability tests
+### Model interpretability tests
 
-### Usage:
+#### Usage
 ```
 cd code
 python eval_top_features.py <model> <dataset>
@@ -133,7 +133,7 @@ Replace `<model>` with one of the following: {`ENB-EV+BRS`, `RF-DFE+BB+BS`}
 
 Replace `<dataset>` with one of the following: {`AG-Worm`, `AG-Fly`, `AG-Mouse`, `AG-Yeast`}
 
-### Example
+#### Example
 ```
 cd code
 python eval_top_features.py ENB-EV+BRS AG-Mouse
@@ -170,7 +170,7 @@ top 10 features (minimal sufficient sets)
 1075  10090.ENSMUSP00000102538    0.008750  10.0
 ```
 
-## Reproduction
+### Reproduction
 
 To reproduce all results from the paper, run the tests described above with all possible combinations of models and datasets.
 
@@ -182,6 +182,6 @@ Expected running time on a typical computer:
   - ENB-EV+BRS: less than 10 minutes
   - RF-DFE+BB+BS: up to 4 hours
 
-# License
+## License
 
 This project is covered under the terms of the [GNU General Public License (GPL) version 3](LICENSE).
