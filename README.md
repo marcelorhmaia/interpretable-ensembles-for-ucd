@@ -71,7 +71,7 @@ The required GSL 2.6 headers and binaries for Windows x64 are available from thi
 A C compiler is required to build Python extension modules (see the [Cython documentation](https://cython.readthedocs.io/en/stable/src/quickstart/install.html)).  
 The compiled extension modules compatible with Python 3.9 and Windows x64 are available from this repository.
 
-## Installation guide:
+## Installation guide
 
 Clone the project from GitHub:
 ```
@@ -83,7 +83,7 @@ Build the extension modules (only required if not on Python 3.9/Windows x64):
 2. `cd code`
 3. `python setup.py build_ext --inplace`
 
-## Instructions for use:
+## Instructions for use
 
 ### Predictive performance tests
 
