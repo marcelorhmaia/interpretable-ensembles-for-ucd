@@ -1,7 +1,6 @@
 # Copyright (C) 2022  Marcelo R. H. Maia <mmaia@ic.uff.br, marcelo.h.maia@ibge.gov.br>
 # License: GPLv3 (https://www.gnu.org/licenses/gpl-3.0.html)
-
-
+import threading
 from warnings import catch_warnings, simplefilter, warn
 
 import numpy as np
@@ -10,12 +9,14 @@ from pandas import DataFrame
 from scipy.sparse import issparse
 from scipy.stats import entropy
 from sklearn.ensemble import RandomForestClassifier, _forest
-from sklearn.ensemble._forest import _get_n_samples_bootstrap, MAX_INT
+from sklearn.ensemble._base import _partition_estimators
+from sklearn.ensemble._forest import _get_n_samples_bootstrap, MAX_INT, _accumulate_prediction
 from sklearn.exceptions import DataConversionWarning
+from sklearn.preprocessing import binarize
 from sklearn.tree._tree import DTYPE, DOUBLE
 from sklearn.utils import compute_sample_weight, check_random_state
 from sklearn.utils.fixes import _joblib_parallel_args, delayed
-from sklearn.utils.validation import _check_sample_weight
+from sklearn.utils.validation import _check_sample_weight, check_is_fitted
 
 from ud_tree_classes import DFEDecisionTreeClassifier, UDDecisionTreeClassifier
 
@@ -76,7 +77,7 @@ def compute_feature_bias(x, uncertain_features, sample_indices=None):
 
 
 def parallel_build_trees(tree, forest, X, y, sample_weight, tree_idx, n_trees, verbose=0, class_weight=None,
-                         n_samples_bootstrap=None, sample_bias=None, feature_bias=None):
+                         n_samples_bootstrap=None, sample_bias=None, feature_bias=None, binarized_X=None):
     """
     Private function used to fit a single tree in parallel."""
     if verbose > 1:
@@ -109,17 +110,25 @@ def parallel_build_trees(tree, forest, X, y, sample_weight, tree_idx, n_trees, v
         if forest.biased_splitting:
             if feature_bias is None:
                 feature_bias = compute_feature_bias(X, forest.uncertain_features, indices)
+            if binarized_X is not None:
+                X = binarized_X
             tree.fit(X, y, sample_weight=curr_sample_weight, check_input=False,
                      feature_bias=feature_bias)
         else:
+            if binarized_X is not None:
+                X = binarized_X
             tree.fit(X, y, sample_weight=curr_sample_weight, check_input=False)
     else:
         if forest.biased_splitting:
             if feature_bias is None:
                 feature_bias = compute_feature_bias(X, forest.uncertain_features)
+            if binarized_X is not None:
+                X = binarized_X
             tree.fit(X, y, sample_weight=sample_weight, check_input=False,
                      feature_bias=feature_bias)
         else:
+            if binarized_X is not None:
+                X = binarized_X
             tree.fit(X, y, sample_weight=sample_weight, check_input=False)
 
     return tree
@@ -315,7 +324,8 @@ class UDRandomForestClassifier(RandomForestClassifier):
                  max_samples=None,
                  uncertain_features=None,
                  biased_bootstrap=True,
-                 biased_splitting=True):
+                 biased_splitting=True,
+                 binarize=None):
         super().__init__(
             n_estimators=n_estimators,
             criterion=criterion,
@@ -339,6 +349,7 @@ class UDRandomForestClassifier(RandomForestClassifier):
         self.uncertain_features = uncertain_features
         self.biased_bootstrap = biased_bootstrap
         self.biased_splitting = biased_splitting
+        self.binarize = binarize
         self.base_estimator = UDDecisionTreeClassifier(uncertain_features=uncertain_features)
 
     def fit(self, X, y, sample_weight=None):
@@ -428,6 +439,10 @@ class UDRandomForestClassifier(RandomForestClassifier):
             if self.bootstrap and self.biased_bootstrap and self.uncertain_features is not None:
                 sample_bias = compute_sample_bias(X, self.uncertain_features)
 
+            bX = None
+            if self.binarize is not None:
+                bX = binarize(X, threshold=self.binarize)
+
             # Parallel loop: we prefer the threading backend as the Cython code
             # for fitting the trees is internally releasing the Python GIL
             # making threading more efficient than multiprocessing in
@@ -439,7 +454,7 @@ class UDRandomForestClassifier(RandomForestClassifier):
                 delayed(parallel_build_trees)(
                     t, self, X, y, sample_weight, i, len(trees),
                     verbose=self.verbose, class_weight=self.class_weight,
-                    n_samples_bootstrap=n_samples_bootstrap, sample_bias=sample_bias)
+                    n_samples_bootstrap=n_samples_bootstrap, sample_bias=sample_bias, binarized_X=bX)
                 for i, t in enumerate(trees))
 
             # Collect newly grown trees
@@ -454,3 +469,32 @@ class UDRandomForestClassifier(RandomForestClassifier):
             self.classes_ = self.classes_[0]
 
         return self
+
+    def predict_proba(self, X):
+        check_is_fitted(self)
+        # Check data
+        X = self._validate_X_predict(X)
+
+        if self.binarize is not None:
+            X = binarize(X, threshold=self.binarize)
+
+        # Assign chunk of trees to jobs
+        n_jobs, _, _ = _partition_estimators(self.n_estimators, self.n_jobs)
+
+        # avoid storing the output of every estimator by summing them here
+        all_proba = [np.zeros((X.shape[0], j), dtype=np.float64)
+                     for j in np.atleast_1d(self.n_classes_)]
+        lock = threading.Lock()
+        Parallel(n_jobs=n_jobs, verbose=self.verbose,
+                 **_joblib_parallel_args(require="sharedmem"))(
+            delayed(_accumulate_prediction)(e.predict_proba, X, all_proba,
+                                            lock)
+            for e in self.estimators_)
+
+        for proba in all_proba:
+            proba /= len(self.estimators_)
+
+        if len(all_proba) == 1:
+            return all_proba[0]
+        else:
+            return all_proba
