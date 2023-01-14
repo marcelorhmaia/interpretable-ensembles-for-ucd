@@ -17,7 +17,7 @@ from sklearn.utils import compute_sample_weight, check_random_state
 from sklearn.utils.fixes import _joblib_parallel_args, delayed
 from sklearn.utils.validation import _check_sample_weight
 
-from ud_tree_classes import DFEDecisionTreeClassifier
+from ud_tree_classes import DFEDecisionTreeClassifier, UDDecisionTreeClassifier
 
 
 def generate_biased_sample_indices(random_state, n_samples, n_samples_bootstrap, sample_proba):
@@ -176,6 +176,170 @@ class DFERandomForestClassifier(RandomForestClassifier):
         self.missing_values = missing_values
         self.base_estimator = DFEDecisionTreeClassifier(uncertain_features=uncertain_features,
                                                         missing_values=missing_values)
+
+    def fit(self, X, y, sample_weight=None):
+        # Validate or convert input data
+        if issparse(y):
+            raise ValueError(
+                "sparse multilabel-indicator for y is not supported."
+            )
+        X, y = self._validate_data(X, y, multi_output=True,
+                                   accept_sparse="csc", dtype=DTYPE)
+        if sample_weight is not None:
+            sample_weight = _check_sample_weight(sample_weight, X)
+
+        if issparse(X):
+            # Pre-sort indices to avoid that each individual tree of the
+            # ensemble sorts the indices.
+            X.sort_indices()
+
+        # Remap output
+        self.n_features_ = X.shape[1]
+
+        y = np.atleast_1d(y)
+        if y.ndim == 2 and y.shape[1] == 1:
+            warn("A column-vector y was passed when a 1d array was"
+                 " expected. Please change the shape of y to "
+                 "(n_samples,), for example using ravel().",
+                 DataConversionWarning, stacklevel=2)
+
+        if y.ndim == 1:
+            # reshape is necessary to preserve the data contiguity against vs
+            # [:, np.newaxis] that does not.
+            y = np.reshape(y, (-1, 1))
+
+        self.n_outputs_ = y.shape[1]
+
+        y, expanded_class_weight = self._validate_y_class_weight(y)
+
+        if getattr(y, "dtype", None) != DOUBLE or not y.flags.contiguous:
+            y = np.ascontiguousarray(y, dtype=DOUBLE)
+
+        if expanded_class_weight is not None:
+            if sample_weight is not None:
+                sample_weight = sample_weight * expanded_class_weight
+            else:
+                sample_weight = expanded_class_weight
+
+        # Get bootstrap sample size
+        n_samples_bootstrap = _get_n_samples_bootstrap(
+            n_samples=X.shape[0],
+            max_samples=self.max_samples
+        )
+
+        # Check parameters
+        self._validate_estimator()
+
+        if not self.bootstrap and self.oob_score:
+            raise ValueError("Out of bag estimation only available"
+                             " if bootstrap=True")
+
+        random_state = check_random_state(self.random_state)
+
+        if not self.warm_start or not hasattr(self, "estimators_"):
+            # Free allocated memory, if any
+            self.estimators_ = []
+
+        n_more_estimators = self.n_estimators - len(self.estimators_)
+
+        if n_more_estimators < 0:
+            raise ValueError('n_estimators=%d must be larger or equal to '
+                             'len(estimators_)=%d when warm_start==True'
+                             % (self.n_estimators, len(self.estimators_)))
+
+        elif n_more_estimators == 0:
+            warn("Warm-start fitting without increasing n_estimators does not "
+                 "fit new trees.")
+        else:
+            if self.warm_start and len(self.estimators_) > 0:
+                # We draw from the random state to get the random state we
+                # would have got if we hadn't used a warm_start.
+                random_state.randint(MAX_INT, size=len(self.estimators_))
+
+            trees = [self._make_estimator(append=False,
+                                          random_state=random_state)
+                     for i in range(n_more_estimators)]
+
+            sample_bias = None
+            if self.bootstrap and self.biased_bootstrap and self.uncertain_features is not None:
+                sample_bias = compute_sample_bias(X, self.uncertain_features)
+
+            # Parallel loop: we prefer the threading backend as the Cython code
+            # for fitting the trees is internally releasing the Python GIL
+            # making threading more efficient than multiprocessing in
+            # that case. However, for joblib 0.12+ we respect any
+            # parallel_backend contexts set at a higher level,
+            # since correctness does not rely on using threads.
+            trees = Parallel(n_jobs=self.n_jobs, verbose=self.verbose,
+                             **_joblib_parallel_args(prefer='threads'))(
+                delayed(parallel_build_trees)(
+                    t, self, X, y, sample_weight, i, len(trees),
+                    verbose=self.verbose, class_weight=self.class_weight,
+                    n_samples_bootstrap=n_samples_bootstrap, sample_bias=sample_bias)
+                for i, t in enumerate(trees))
+
+            # Collect newly grown trees
+            self.estimators_.extend(trees)
+
+        if self.oob_score:
+            self._set_oob_score(X, y)
+
+        # Decapsulate classes_ attributes
+        if hasattr(self, "classes_") and self.n_outputs_ == 1:
+            self.n_classes_ = self.n_classes_[0]
+            self.classes_ = self.classes_[0]
+
+        return self
+
+
+class UDRandomForestClassifier(RandomForestClassifier):
+    def __init__(self,
+                 n_estimators=100,
+                 criterion='gini',
+                 max_depth=None,
+                 min_samples_split=2,
+                 min_samples_leaf=1,
+                 min_weight_fraction_leaf=0.,
+                 max_features='auto',
+                 max_leaf_nodes=None,
+                 min_impurity_decrease=0.,
+                 min_impurity_split=None,
+                 bootstrap=True,
+                 oob_score=False,
+                 n_jobs=None,
+                 random_state=None,
+                 verbose=0,
+                 warm_start=False,
+                 class_weight=None,
+                 ccp_alpha=0.0,
+                 max_samples=None,
+                 uncertain_features=None,
+                 biased_bootstrap=True,
+                 biased_splitting=True):
+        super().__init__(
+            n_estimators=n_estimators,
+            criterion=criterion,
+            max_depth=max_depth,
+            min_samples_split=min_samples_split,
+            min_samples_leaf=min_samples_leaf,
+            min_weight_fraction_leaf=min_weight_fraction_leaf,
+            max_features=max_features,
+            max_leaf_nodes=max_leaf_nodes,
+            min_impurity_decrease=min_impurity_decrease,
+            min_impurity_split=min_impurity_split,
+            bootstrap=bootstrap,
+            oob_score=oob_score,
+            n_jobs=n_jobs,
+            random_state=random_state,
+            verbose=verbose,
+            warm_start=warm_start,
+            class_weight=class_weight,
+            ccp_alpha=ccp_alpha,
+            max_samples=max_samples)
+        self.uncertain_features = uncertain_features
+        self.biased_bootstrap = biased_bootstrap
+        self.biased_splitting = biased_splitting
+        self.base_estimator = UDDecisionTreeClassifier(uncertain_features=uncertain_features)
 
     def fit(self, X, y, sample_weight=None):
         # Validate or convert input data

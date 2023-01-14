@@ -20,3 +20,8 @@ cdef class DFESplitter(Splitter):
 
     cdef int dfe_node_reset_with_copy(self, SIZE_t start, SIZE_t end,
                         double* weighted_n_node_samples, SIZE_t* samples, DOUBLE_t* sample_weight) nogil except -1
+
+
+cdef class UDSplitter(Splitter):
+    cdef int ud_node_split(self, double impurity, SplitRecord* split,
+                        SIZE_t* n_constant_features, double* feature_bias) nogil except -1
