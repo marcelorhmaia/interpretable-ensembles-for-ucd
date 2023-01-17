@@ -653,6 +653,8 @@ cdef class UDBestSplitter(UDSplitter):
 
                                 best = current  # copy
 
+        gsl_rng_free(r)
+
         # Reorganize into samples[start:best.pos] + samples[best.pos:end]
         if best.pos < end:
             partition_end = end
