@@ -158,6 +158,7 @@ class DFERandomForestClassifier(RandomForestClassifier):
                  uncertain_features=None,
                  biased_bootstrap=False,
                  biased_splitting=False,
+                 default_feature_uncertainty=False,
                  missing_values=-1.0):
         super().__init__(
             n_estimators=n_estimators,
@@ -182,8 +183,10 @@ class DFERandomForestClassifier(RandomForestClassifier):
         self.uncertain_features = uncertain_features
         self.biased_bootstrap = biased_bootstrap
         self.biased_splitting = biased_splitting
+        self.default_feature_uncertainty = default_feature_uncertainty
         self.missing_values = missing_values
         self.base_estimator = DFEDecisionTreeClassifier(uncertain_features=uncertain_features,
+                                                        default_feature_uncertainty=default_feature_uncertainty,
                                                         missing_values=missing_values)
 
     def fit(self, X, y, sample_weight=None):
@@ -269,6 +272,13 @@ class DFERandomForestClassifier(RandomForestClassifier):
                                           random_state=random_state)
                      for i in range(n_more_estimators)]
 
+            if self.uncertain_features is None:
+                self.uncertain_features = np.full((self.n_features_,), self.default_feature_uncertainty)
+            elif self.n_features_ > self.uncertain_features.shape[0]:
+                self.uncertain_features = np.append(self.uncertain_features, np.full(
+                    (self.n_features_ - self.uncertain_features.shape[0],),
+                    self.default_feature_uncertainty))
+
             sample_bias = None
             if self.bootstrap and self.biased_bootstrap and self.uncertain_features is not None:
                 sample_bias = compute_sample_bias(X, self.uncertain_features)
@@ -325,6 +335,7 @@ class UDRandomForestClassifier(RandomForestClassifier):
                  uncertain_features=None,
                  biased_bootstrap=True,
                  biased_splitting=True,
+                 default_feature_uncertainty=False,
                  binarize=None):
         super().__init__(
             n_estimators=n_estimators,
@@ -349,8 +360,9 @@ class UDRandomForestClassifier(RandomForestClassifier):
         self.uncertain_features = uncertain_features
         self.biased_bootstrap = biased_bootstrap
         self.biased_splitting = biased_splitting
+        self.default_feature_uncertainty = default_feature_uncertainty
         self.binarize = binarize
-        self.base_estimator = UDDecisionTreeClassifier(uncertain_features=uncertain_features)
+        self.base_estimator = UDDecisionTreeClassifier()
 
     def fit(self, X, y, sample_weight=None):
         # Validate or convert input data
@@ -434,6 +446,13 @@ class UDRandomForestClassifier(RandomForestClassifier):
             trees = [self._make_estimator(append=False,
                                           random_state=random_state)
                      for i in range(n_more_estimators)]
+
+            if self.uncertain_features is None:
+                self.uncertain_features = np.full((self.n_features_,), self.default_feature_uncertainty)
+            elif self.n_features_ > self.uncertain_features.shape[0]:
+                self.uncertain_features = np.append(self.uncertain_features, np.full(
+                                                                (self.n_features_ - self.uncertain_features.shape[0],),
+                                                                self.default_feature_uncertainty))
 
             sample_bias = None
             if self.bootstrap and self.biased_bootstrap and self.uncertain_features is not None:

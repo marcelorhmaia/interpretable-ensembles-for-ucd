@@ -40,6 +40,7 @@ class DFEDecisionTreeClassifier(DecisionTreeClassifier):
                  class_weight=None,
                  ccp_alpha=0.0,
                  uncertain_features=None,
+                 default_feature_uncertainty=False,
                  missing_values=-1.0):
         super().__init__(
             criterion=criterion,
@@ -56,6 +57,7 @@ class DFEDecisionTreeClassifier(DecisionTreeClassifier):
             min_impurity_split=min_impurity_split,
             ccp_alpha=ccp_alpha)
         self.uncertain_features = uncertain_features
+        self.default_feature_uncertainty = default_feature_uncertainty
         self.missing_values = missing_values
         CRITERIA_CLF["dfe_gini"] = ud_criterion.DFEGini
         DENSE_SPLITTERS["dfe_best"] = ud_splitter.DFEBestSplitter
@@ -307,6 +309,13 @@ class DFEDecisionTreeClassifier(DecisionTreeClassifier):
                                            self.min_impurity_decrease,
                                            min_impurity_split)
 
+        if self.uncertain_features is None:
+            self.uncertain_features = np.full((self.n_features_,), self.default_feature_uncertainty)
+        elif self.n_features_ > self.uncertain_features.shape[0]:
+            self.uncertain_features = np.append(self.uncertain_features, np.full(
+                                                                (self.n_features_ - self.uncertain_features.shape[0],),
+                                                                self.default_feature_uncertainty))
+
         builder.build(self.tree_, X, y, sample_weight, self.uncertain_features, feature_bias, self.missing_values)
 
         if self.n_outputs_ == 1 and is_classifier(self):
@@ -358,8 +367,7 @@ class UDDecisionTreeClassifier(DecisionTreeClassifier):
                  min_impurity_decrease=0.,
                  min_impurity_split=None,
                  class_weight=None,
-                 ccp_alpha=0.0,
-                 uncertain_features=None):
+                 ccp_alpha=0.0):
         super().__init__(
             criterion=criterion,
             splitter=splitter,
@@ -374,7 +382,6 @@ class UDDecisionTreeClassifier(DecisionTreeClassifier):
             min_impurity_decrease=min_impurity_decrease,
             min_impurity_split=min_impurity_split,
             ccp_alpha=ccp_alpha)
-        self.uncertain_features = uncertain_features
         DENSE_SPLITTERS["ud_best"] = ud_splitter.UDBestSplitter
 
     def fit(self, X, y, sample_weight=None, check_input=True,

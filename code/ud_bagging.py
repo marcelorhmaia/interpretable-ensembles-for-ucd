@@ -248,7 +248,8 @@ class UDBaggingClassifier(InterpretableBaggingClassifier):
                  verbose=0,
                  uncertain_features=None,
                  biased_bootstrap=False,
-                 biased_subspaces=False):
+                 biased_subspaces=False,
+                 default_feature_uncertainty=False):
         super().__init__(
             base_estimator,
             n_estimators=n_estimators,
@@ -264,6 +265,7 @@ class UDBaggingClassifier(InterpretableBaggingClassifier):
         self.uncertain_features = uncertain_features
         self.biased_bootstrap = biased_bootstrap
         self.biased_subspaces = biased_subspaces
+        self.default_feature_uncertainty = default_feature_uncertainty
 
     def _fit(self, X, y, max_samples=None, max_depth=None, sample_weight=None):
         random_state = check_random_state(self.random_state)
@@ -356,6 +358,13 @@ class UDBaggingClassifier(InterpretableBaggingClassifier):
 
         seeds = random_state.randint(MAX_INT, size=n_more_estimators)
         self._seeds = seeds
+
+        if self.uncertain_features is None:
+            self.uncertain_features = np.full((self.n_features_,), self.default_feature_uncertainty)
+        elif self.n_features_ > self.uncertain_features.shape[0]:
+            self.uncertain_features = np.append(self.uncertain_features, np.full(
+                                                                (self.n_features_ - self.uncertain_features.shape[0],),
+                                                                self.default_feature_uncertainty))
 
         sample_bias = None
         if self.bootstrap and self.biased_bootstrap:
