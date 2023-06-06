@@ -17,7 +17,7 @@
 ## Overview
 This repository contains the datasets and code related to the work reported in the paper referenced below.
 
-M. R. H. Maia, A. Plastino, A. A. Freitas and J. P. Magalhães, "Interpretable Ensembles of Classifiers for Uncertain Data with Bioinformatics Applications", in *IEEE/ACM Transactions on Computational Biology and Bioinformatics*, 2022, DOI: [10.1109/TCBB.2022.3218588](https://doi.org/10.1109/TCBB.2022.3218588).
+M. R. H. Maia, A. Plastino, A. A. Freitas and J. P. Magalhães, "Interpretable Ensembles of Classifiers for Uncertain Data with Bioinformatics Applications", in *IEEE/ACM Transactions on Computational Biology and Bioinformatics*, **20**, 1829-1841 (2023). DOI: [10.1109/TCBB.2022.3218588](https://doi.org/10.1109/TCBB.2022.3218588).
 
 ## Datasets
 ### Ageing-related genes
